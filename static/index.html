@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自动驾驶泛化测试 · 总结助手</title>
+<script src="/static/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface-alt: #f8f9fb;
+    --border: #e4e7ec;
+    --border-light: #f0f1f3;
+    --text: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --accent: #4f6ef7;
+    --accent-hover: #3b5de7;
+    --accent-soft: rgba(79,110,247,.08);
+    --accent-glow: rgba(79,110,247,.18);
+    --danger: #ef4444;
+    --success: #10b981;
+    --warn-bg: #fffbeb;
+    --warn-border: #fde68a;
+    --warn-text: #92400e;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.04);
+    --shadow: 0 2px 8px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.04);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,.08);
+    --transition: .25s cubic-bezier(.4,0,.2,1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ====== HEADER ====== */
+  .header {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #3b5de7 100%);
+    color: #fff;
+    padding: 44px 20px 40px;
+    text-align: center;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -60%; left: -20%;
+    width: 140%; height: 220%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(79,110,247,.25) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(56,189,248,.15) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .header-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px; height: 52px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border-radius: 14px;
+    font-size: 26px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(255,255,255,.1);
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: .3px;
+  }
+  .header p {
+    margin-top: 8px;
+    font-size: 14px;
+    color: rgba(255,255,255,.7);
+    font-weight: 400;
+  }
+
+  /* ====== LAYOUT ====== */
+  .container {
+    max-width: 880px;
+    margin: -24px auto 0;
+    padding: 0 16px 60px;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ====== CARD ====== */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-light);
+    padding: 28px;
+    margin-bottom: 20px;
+    transition: box-shadow var(--transition);
+  }
+
+  /* ====== INPUT SECTION ====== */
+  .section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  .badge {
+    font-size: 11px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 500;
+    margin-left: 4px;
+  }
+
+  .input-tip {
+    font-size: 13px;
+    color: var(--warn-text);
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    line-height: 1.6;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .input-tip .tip-icon { flex-shrink: 0; }
+
+  textarea {
+    width: 100%;
+    min-height: 200px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.75;
+    resize: vertical;
+    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    color: var(--text);
+    background: var(--surface-alt);
+  }
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+    background: var(--surface);
+  }
+  textarea::placeholder { color: var(--text-muted); }
+
+  /* ====== TOOLBAR ====== */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .char-count {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .model-picker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .model-picker label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .model-select {
+    padding: 6px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface-alt);
+    cursor: pointer;
+    transition: border-color var(--transition);
+    max-width: 220px;
+  }
+  .model-select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .btn-group { display: flex; gap: 8px; }
+
+  /* ====== BUTTONS ====== */
+  button {
+    padding: 9px 20px;
+    border: none;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, #6366f1 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(79,110,247,.3);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(79,110,247,.35);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(79,110,247,.25);
+  }
+  .btn-primary:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1.5px solid var(--border);
+  }
+  .btn-ghost:hover {
+    background: var(--surface-alt);
+    border-color: #d1d5db;
+    color: var(--text);
+  }
+
+  .demo-link {
+    display: inline-block;
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+    opacity: .85;
+    transition: opacity var(--transition);
+    text-align: center;
+    width: 100%;
+  }
+  .demo-link:hover { opacity: 1; text-decoration: underline; }
+
+  /* ====== LOADING ====== */
+  .loading-overlay {
+    display: none;
+    text-align: center;
+    padding: 52px 20px;
+  }
+  .loading-overlay.show { display: block; }
+
+  .dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  .dots span {
+    width: 10px; height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+  .dots span:nth-child(2) { animation-delay: .15s; }
+  .dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(.6); opacity: .4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  .loading-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  /* ====== RESULT ====== */
+  .result-panel {
+    display: none;
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+    animation: fadeUp .4s ease-out;
+  }
+  .result-panel.show { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--surface-alt);
+  }
+  .result-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .result-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .result-body { padding: 28px; }
+
+  .result-actions { display: flex; gap: 6px; }
+  .btn-icon {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+  }
+  .btn-icon:hover { background: var(--surface-alt); color: var(--text); border-color: #d1d5db; }
+  .btn-icon.copied { background: #ecfdf5; color: var(--success); border-color: #a7f3d0; }
+
+  /* ====== MARKDOWN ====== */
+  .markdown-body { font-size: 14px; color: var(--text); line-height: 1.75; }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3 { margin: 22px 0 10px; color: var(--text); }
+  .markdown-body h1 { font-size: 18px; }
+  .markdown-body h2 { font-size: 16px; }
+  .markdown-body h3 { font-size: 14px; font-weight: 600; }
+  .markdown-body p { margin: 8px 0; }
+  .markdown-body ul, .markdown-body ol { padding-left: 22px; margin: 8px 0; }
+  .markdown-body li { margin: 5px 0; }
+  .markdown-body li::marker { color: var(--text-muted); }
+  .markdown-body strong { font-weight: 600; color: var(--text); }
+  .markdown-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    font-size: 13px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .markdown-body th, .markdown-body td {
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    text-align: left;
+  }
+  .markdown-body th {
+    background: var(--surface-alt);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    color: var(--text-secondary);
+  }
+  .markdown-body tr:hover td { background: rgba(79,110,247,.02); }
+  .markdown-body hr { border: none; border-top: 1px solid var(--border-light); margin: 20px 0; }
+
+  /* ====== ERROR ====== */
+  .error-msg {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  .error-msg.show { display: block; }
+
+  /* ====== FOOTER ====== */
+  .footer {
+    text-align: center;
+    padding: 28px 20px 20px;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: .2px;
+  }
+
+  /* ====== RESPONSIVE ====== */
+  @media (max-width: 640px) {
+    .header { padding: 32px 16px 28px; }
+    .header h1 { font-size: 18px; }
+    .container { padding: 0 10px 40px; margin-top: -16px; }
+    .card { padding: 20px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar-left { justify-content: space-between; }
+    .btn-group { justify-content: flex-end; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-icon">🚗</div>
+    <h1>自动驾驶泛化测试 · 总结助手</h1>
+    <p>粘贴当天测试记录，AI 自动按风险等级聚类归纳</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="section-title">
+      <span class="icon">📋</span>
+      粘贴测试记录
+      <span class="badge">支持任意格式</span>
+    </div>
+    <div class="input-tip">
+      <span class="tip-icon">💡</span>
+      <span>问题描述应尽量详细，需包含问题场景、问题现象、是否接管，如有表现好的地方也需有对应 Good Case 阐述，帮助 AI 更好地总结。</span>
+    </div>
+    <textarea id="input" placeholder="将当天的测试问题记录粘贴到这里...&#10;&#10;例如：&#10;Tag284: 红灯头车二次启停闯红灯，直行车道，前方红灯头车二次启停后车辆未及时刹停冲过停止线，安全接管&#10;Tag247: 弯道方向失控甩向对向车道，山路弯道车速偏快方向控制不住，安全接管&#10;Tag123: 变道犹豫来回变道骑线行驶，高架主路，效率接管&#10;..."></textarea>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <span class="char-count" id="charCount">已输入 0 字</span>
+        <div class="model-picker">
+          <label for="modelSelect">模型：</label>
+          <select id="modelSelect" class="model-select">
+            <option value="">加载中…</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn-ghost" id="btnClear" onclick="clearInput()">清空</button>
+        <button class="btn-primary" id="btnSubmit" onclick="doSummarize()">
+          <span id="btnText">开始总结</span>
+          <span style="font-size:15px">→</span>
+        </button>
+      </div>
+    </div>
+
+    <a class="demo-link" onclick="loadDemo()">没有数据？点击加载示例</a>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="loading-overlay" id="loading">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="loading-text" id="loadingText">正在分析问题记录，请稍候…</div>
+  </div>
+
+  <div class="result-panel" id="resultPanel">
+    <div class="result-header">
+      <h3>📊 总结结果</h3>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="result-meta" id="resultMeta"></span>
+        <div class="result-actions">
+          <button class="btn-icon" onclick="copyResult()" id="btnCopy">复制</button>
+        </div>
+      </div>
+    </div>
+    <div class="result-body markdown-body" id="resultBody"></div>
+  </div>
+
+</div>
+
+<div class="footer">自动驾驶泛化测试总结助手 · 内部试用版</div>
+
+<script>
+const inputEl    = document.getElementById('input');
+const charEl     = document.getElementById('charCount');
+const btnEl      = document.getElementById('btnSubmit');
+const btnText    = document.getElementById('btnText');
+const loadEl     = document.getElementById('loading');
+const errEl      = document.getElementById('errorMsg');
+const resPanel   = document.getElementById('resultPanel');
+const resBody    = document.getElementById('resultBody');
+const resMeta    = document.getElementById('resultMeta');
+const modelSelEl = document.getElementById('modelSelect');
+
+let rawMarkdown = '';
+
+inputEl.addEventListener('input', () => {
+  charEl.textContent = `已输入 ${inputEl.value.length} 字`;
+});
+
+(async function loadModels() {
+  try {
+    const resp = await fetch('/api/models');
+    const data = await resp.json();
+    const models = data.models || [];
+    modelSelEl.innerHTML = '';
+    models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name;
+      if (m.default) opt.selected = true;
+      modelSelEl.appendChild(opt);
+    });
+  } catch {
+    modelSelEl.innerHTML = '<option value="">模型加载失败</option>';
+  }
+})();
+
+function clearInput() {
+  inputEl.value = '';
+  charEl.textContent = '已输入 0 字';
+  errEl.classList.remove('show');
+}
+
+function showError(msg) {
+  errEl.textContent = msg;
+  errEl.classList.add('show');
+}
+
+async function doSummarize() {
+  const text = inputEl.value.trim();
+  if (!text) { showError('请先粘贴问题记录'); return; }
+  if (text.length < 10) { showError('输入内容过短，请粘贴完整的问题记录'); return; }
+
+  errEl.classList.remove('show');
+  resPanel.classList.remove('show');
+  loadEl.classList.add('show');
+  btnEl.disabled = true;
+  btnText.textContent = '分析中…';
+
+  const loadingTextEl = document.getElementById('loadingText');
+  loadingTextEl.textContent = '正在分析问题记录，请稍候…';
+  const t0 = Date.now();
+  const timer = setInterval(() => {
+    const sec = Math.floor((Date.now() - t0) / 1000);
+    loadingTextEl.textContent = `正在分析问题记录… 已等待 ${sec} 秒`;
+  }, 1000);
+
+  try {
+    const resp = await fetch('/api/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, model: modelSelEl.value || undefined }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `请求失败 (${resp.status})`);
+    }
+
+    const data = await resp.json();
+    rawMarkdown = data.markdown;
+
+    resBody.innerHTML = marked.parse(rawMarkdown);
+    resMeta.textContent = `${data.model} · 耗时 ${(data.elapsed_ms / 1000).toFixed(1)}s`;
+    resPanel.classList.add('show');
+    resPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (e) {
+    showError(e.message || '请求失败，请检查网络或联系管理员');
+  } finally {
+    clearInterval(timer);
+    loadEl.classList.remove('show');
+    btnEl.disabled = false;
+    btnText.textContent = '开始总结';
+  }
+}
+
+async function copyResult() {
+  const btn = document.getElementById('btnCopy');
+  try {
+    await navigator.clipboard.writeText(rawMarkdown);
+    btn.textContent = '已复制';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = rawMarkdown;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '已复制';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000);
+  }
+}
+
+function loadDemo() {
+  inputEl.value = `Tag284: 红灯头车二次启停闯红灯
+Tag247: 左转车道红灯头车二次启停冲红灯
+Tag68: 灯控右转不控车闯红灯
+Tag312: 弯道方向失控甩向对向车道，存在严重碰撞风险
+Tag198: 跟车距离过近急刹未刹住，需紧急接管
+Tag155: 绕行横向距离不足，与对向来车险些碰撞
+Tag203: 斑马线行人不礼让，行人被迫停下避让
+Tag401: 变道犹豫来回变道骑线行驶
+Tag388: 无效变道频繁，刚变过去又变回来
+Tag295: 路口绿灯无障碍物莫名刹停
+Tag211: 对旁车预测误入侵导致误降速急刹
+Tag177: 弯道不居中入侵对向车道
+Tag342: 路沿距离过近存在剐蹭风险
+Tag265: 加减速不平顺体感割裂
+Tag129: 方向盘晃动来回甩动让人恐慌
+Tag445: 窄路绕行速度快距离障碍物近压迫感强
+Tag321: 三轮车渲染成二轮车目标识别类型错误
+Tag156: 导航选路错误绕远路
+Tag412: 限速偏差实际限速60显示40
+Tag278: 前车识别丢失近处车辆数据丢失
+Tag189: 功能异常退出crash
+Tag302: 纵向体感好加减速平顺跟车自然
+Tag233: 起步丝滑整体舒适性有明显提升`;
+  charEl.textContent = `已输入 ${inputEl.value.length} 字`;
+}
+
+inputEl.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    doSummarize();
+  }
+});
+</script>
+</body>
+</html>
