@@ -50,6 +50,6 @@ async def summarize(raw_text: str, model: str | None = None) -> str:
             {"role": "user", "content": raw_text},
         ],
         temperature=0.3,
-        max_tokens=4096,
+        max_tokens=8192,
     )
     return response.choices[0].message.content.strip()
