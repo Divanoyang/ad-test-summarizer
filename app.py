@@ -1,5 +1,6 @@
 """自动驾驶泛化测试问题总结 Web 服务。"""
 
+import json
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -9,9 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 
 from config import settings
-from summarizer import summarize
+from summarizer import summarize, summarize_stream
 
 logging.basicConfig(
     level=logging.INFO,
@@ -72,6 +74,31 @@ async def api_summarize(req: SummarizeRequest):
     elapsed = int((time.monotonic() - t0) * 1000)
     logger.info("总结完成 | model=%s | 输入长度=%d | 耗时=%dms", use_model, len(text), elapsed)
     return SummarizeResponse(markdown=result, elapsed_ms=elapsed, model=use_model)
+
+
+@app.post("/api/summarize/stream")
+async def api_summarize_stream(req: SummarizeRequest):
+    text = req.text.strip()
+    if not text:
+        raise HTTPException(400, "输入不能为空")
+    if len(text) < 10:
+        raise HTTPException(400, "输入内容过短，请粘贴完整的问题记录")
+
+    use_model = req.model or settings.LLM_MODEL
+
+    async def event_generator():
+        t0 = time.monotonic()
+        try:
+            async for chunk in summarize_stream(text, model=use_model):
+                yield {"event": "chunk", "data": json.dumps({"text": chunk}, ensure_ascii=False)}
+            elapsed = int((time.monotonic() - t0) * 1000)
+            yield {"event": "done", "data": json.dumps({"model": use_model, "elapsed_ms": elapsed}, ensure_ascii=False)}
+            logger.info("流式总结完成 | model=%s | 输入长度=%d | 耗时=%dms", use_model, len(text), elapsed)
+        except Exception:
+            logger.exception("LLM 流式调用失败 | model=%s", use_model)
+            yield {"event": "error", "data": json.dumps({"detail": f"模型 {use_model} 调用失败"}, ensure_ascii=False)}
+
+    return EventSourceResponse(event_generator())
 
 
 @app.get("/")
