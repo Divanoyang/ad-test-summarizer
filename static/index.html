@@ -408,6 +408,19 @@
   .markdown-body tr:hover td { background: rgba(79,110,247,.02); }
   .markdown-body hr { border: none; border-top: 1px solid var(--border-light); margin: 20px 0; }
 
+  /* ====== STREAMING CURSOR ====== */
+  .streaming-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 16px;
+    background: var(--primary);
+    border-radius: 2px;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: blink 0.8s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
   /* ====== ERROR ====== */
   .error-msg {
     display: none;
@@ -571,15 +584,11 @@ async function doSummarize() {
   btnText.textContent = '分析中…';
 
   const loadingTextEl = document.getElementById('loadingText');
-  loadingTextEl.textContent = '正在分析问题记录，请稍候…';
+  loadingTextEl.textContent = '正在连接模型…';
   const t0 = Date.now();
-  const timer = setInterval(() => {
-    const sec = Math.floor((Date.now() - t0) / 1000);
-    loadingTextEl.textContent = `正在分析问题记录… 已等待 ${sec} 秒`;
-  }, 1000);
 
   try {
-    const resp = await fetch('/api/summarize', {
+    const resp = await fetch('/api/summarize/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, model: modelSelEl.value || undefined }),
@@ -590,18 +599,64 @@ async function doSummarize() {
       throw new Error(err.detail || `请求失败 (${resp.status})`);
     }
 
-    const data = await resp.json();
-    rawMarkdown = data.markdown;
-
-    resBody.innerHTML = marked.parse(rawMarkdown);
-    resMeta.textContent = `${data.model} · 耗时 ${(data.elapsed_ms / 1000).toFixed(1)}s`;
+    rawMarkdown = '';
+    loadEl.classList.remove('show');
     resPanel.classList.add('show');
+    resMeta.textContent = '生成中…';
+    resBody.innerHTML = '<span class="streaming-cursor"></span>';
     resPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let renderTimer = null;
+    let done = false;
+
+    function scheduleRender() {
+      if (renderTimer) return;
+      renderTimer = requestAnimationFrame(() => {
+        renderTimer = null;
+        resBody.innerHTML = marked.parse(rawMarkdown) + '<span class="streaming-cursor"></span>';
+      });
+    }
+
+    while (!done) {
+      const { value, done: readerDone } = await reader.read();
+      if (readerDone) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          var eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ') && eventType) {
+          const payload = JSON.parse(line.slice(6));
+          if (eventType === 'chunk') {
+            rawMarkdown += payload.text;
+            scheduleRender();
+          } else if (eventType === 'done') {
+            done = true;
+            resBody.innerHTML = marked.parse(rawMarkdown);
+            resMeta.textContent = `${payload.model} · 耗时 ${(payload.elapsed_ms / 1000).toFixed(1)}s`;
+          } else if (eventType === 'error') {
+            throw new Error(payload.detail);
+          }
+          eventType = null;
+        }
+      }
+    }
+
+    if (!done) {
+      resBody.innerHTML = marked.parse(rawMarkdown);
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+      resMeta.textContent = `耗时 ${elapsed}s`;
+    }
 
   } catch (e) {
     showError(e.message || '请求失败，请检查网络或联系管理员');
   } finally {
-    clearInterval(timer);
     loadEl.classList.remove('show');
     btnEl.disabled = false;
     btnText.textContent = '开始总结';
